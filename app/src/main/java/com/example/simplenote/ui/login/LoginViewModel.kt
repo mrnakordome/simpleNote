@@ -2,7 +2,9 @@ package com.example.simplenote.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.simplenote.App
 import com.example.simplenote.data.AuthRepository
+import com.example.simplenote.data.local.TokenManager
 import com.example.simplenote.data.remote.RetrofitInstance
 import com.example.simplenote.data.remote.request.LoginRequest
 import com.example.simplenote.data.remote.response.ErrorResponse
@@ -21,17 +23,20 @@ data class LoginUiState(
 class LoginViewModel : ViewModel() {
 
     private val repository = AuthRepository(RetrofitInstance.api)
+    private val tokenManager = TokenManager(App.instance)
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState
 
     fun login(username: String, pass: String) {
+        _uiState.value = LoginUiState() // Reset state
         viewModelScope.launch {
             _uiState.value = LoginUiState(isLoading = true)
             try {
                 val response = repository.loginUser(LoginRequest(username, pass))
                 if (response.isSuccessful && response.body() != null) {
-                    // TODO: Save tokens securely (e.g., EncryptedSharedPreferences)
+                    val token = response.body()!!.accessToken
+                    tokenManager.saveToken(token)
                     _uiState.value = LoginUiState(loginSuccess = true)
                 } else {
                     val errorMessage = parseError(response)

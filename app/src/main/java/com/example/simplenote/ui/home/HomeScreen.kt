@@ -9,10 +9,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,35 +21,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.simplenote.data.remote.response.Note
 import com.example.simplenote.ui.theme.AppPurple
-
-data class NoteUi(
-    val id: String,
-    val title: String,
-    val body: String,
-    val tint: Color
-)
-
-private val sampleNotes = listOf(
-    NoteUi("1", "💡 New Product\nIdea Design", "Create a mobile app UI Kit that provide a basic notes functionality but with some improvement.", Color(0xFFFFF3C4)),
-    NoteUi("2", " Groceries list", "Milk, bread, cheese, eggs, and fruits for the week.", Color(0xFFD4EFFF)),
-    NoteUi("3", " Meeting notes", "Discuss Q3 roadmap with the marketing team. Finalize the budget.", Color(0xFFFFD6D6)),
-    NoteUi("4", " Workout plan", "Monday: Chest, Tuesday: Back, Wednesday: Legs.", Color(0xFFE4D4FF))
-)
+import kotlin.random.Random
 
 @Composable
 fun HomeScreen(
+    homeViewModel: HomeViewModel = viewModel(),
     onAddNote: () -> Unit,
     onNoteClick: (noteId: String) -> Unit,
-    onOpenSettingsSystem: () -> Unit = {} // Placeholder for future use
+    onOpenSettings: () -> Unit
 ) {
+    val uiState by homeViewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(BottomTab.Home) }
-    var notes by remember { mutableStateOf(sampleNotes) }
     var query by remember { mutableStateOf("") }
 
-    val filtered = remember(query, notes) {
-        if (query.isBlank()) notes
-        else notes.filter { it.title.contains(query, true) || it.body.contains(query, true) }
+    val filtered = remember(query, uiState.notes) {
+        if (query.isBlank()) uiState.notes
+        else uiState.notes.filter { it.title.contains(query, true) || it.description.contains(query, true) }
     }
 
     Scaffold(
@@ -69,22 +56,29 @@ fun HomeScreen(
         bottomBar = {
             BottomBar(
                 selected = selectedTab,
-                onSelect = {
-                    selectedTab = it
-                    if (it == BottomTab.Settings) onOpenSettingsSystem()
+                onSelect = { tab ->
+                    if (tab == BottomTab.Settings) {
+                        onOpenSettings()
+                    } else {
+                        selectedTab = tab
+                    }
                 }
             )
         }
     ) { padding ->
-        when (selectedTab) {
-            BottomTab.Home -> HomeContent(
+        // The content area now only shows the Home content or a loader
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            HomeContent(
                 modifier = Modifier.padding(padding),
                 query = query,
                 onQuery = { query = it },
                 notes = filtered,
-                onNoteClick = onNoteClick
+                onNoteClick = { onNoteClick(it.toString()) }
             )
-            BottomTab.Settings -> SettingsContent(modifier = Modifier.padding(padding))
         }
     }
 }
@@ -92,10 +86,7 @@ fun HomeScreen(
 private enum class BottomTab { Home, Settings }
 
 @Composable
-private fun BottomBar(
-    selected: BottomTab,
-    onSelect: (BottomTab) -> Unit
-) {
+private fun BottomBar(selected: BottomTab, onSelect: (BottomTab) -> Unit) {
     BottomAppBar(
         tonalElevation = 0.dp,
         containerColor = Color.White,
@@ -114,13 +105,15 @@ private fun BottomBar(
         )
         Spacer(Modifier.weight(1f))
         NavigationBarItem(
-            selected = selected == BottomTab.Settings,
+            selected = false, // Settings tab is never in a "selected" state
             onClick = { onSelect(BottomTab.Settings) },
             icon = { Icon(Icons.Default.Settings, null) },
             label = { Text("Settings") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = AppPurple,
                 selectedTextColor = AppPurple,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 indicatorColor = Color.Transparent
             )
         )
@@ -132,8 +125,8 @@ private fun HomeContent(
     modifier: Modifier = Modifier,
     query: String,
     onQuery: (String) -> Unit,
-    notes: List<NoteUi>,
-    onNoteClick: (noteId: String) -> Unit
+    notes: List<Note>,
+    onNoteClick: (noteId: Int) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -210,7 +203,10 @@ private fun HomeContent(
 }
 
 @Composable
-private fun NoteCard(note: NoteUi, onClick: () -> Unit) {
+private fun NoteCard(note: Note, onClick: () -> Unit) {
+    val colors = listOf(Color(0xFFFFF3C4), Color(0xFFD4EFFF), Color(0xFFFFD6D6), Color(0xFFE4D4FF))
+    val randomColor = remember(note.id) { colors[Random.nextInt(colors.size)] }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -222,7 +218,7 @@ private fun NoteCard(note: NoteUi, onClick: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(note.tint, RoundedCornerShape(12.dp))
+                .background(randomColor, RoundedCornerShape(12.dp))
                 .padding(12.dp)
         ) {
             Text(
@@ -235,7 +231,7 @@ private fun NoteCard(note: NoteUi, onClick: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                text = note.body,
+                text = note.description,
                 color = Color(0xFF4C4C55),
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
@@ -243,22 +239,5 @@ private fun NoteCard(note: NoteUi, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
         }
-    }
-}
-
-@Composable
-private fun SettingsContent(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Settings (placeholder)",
-            color = AppPurple,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold
-        )
     }
 }
