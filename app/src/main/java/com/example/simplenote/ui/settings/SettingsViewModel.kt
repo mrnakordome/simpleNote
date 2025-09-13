@@ -7,20 +7,23 @@ import com.example.simplenote.data.AuthRepository
 import com.example.simplenote.data.local.TokenManager
 import com.example.simplenote.data.remote.RetrofitInstance
 import com.example.simplenote.data.remote.response.UserInfoResponse
+import com.example.simplenote.data.repository.NoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
 
 data class SettingsUiState(
     val isLoading: Boolean = true,
     val userInfo: UserInfoResponse? = null,
     val error: String? = null,
     val passwordChangeSuccess: Boolean = false
-)
 
+)
 class SettingsViewModel : ViewModel() {
     private val repository = AuthRepository(RetrofitInstance.api)
     private val tokenManager = TokenManager(App.instance)
+    private val noteRepository: NoteRepository = App.instance.noteRepository
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState
@@ -62,6 +65,10 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun logout() {
-        tokenManager.clearTokens()
+        viewModelScope.launch {
+            noteRepository.clearLocalCache()
+            tokenManager.clearTokens()
+        }
     }
+
 }

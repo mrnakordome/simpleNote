@@ -2,46 +2,16 @@ package com.example.simplenote.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -52,7 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.simplenote.data.remote.response.Note
+import com.example.simplenote.data.local.NoteEntity
 import com.example.simplenote.ui.theme.AppPurple
 import kotlin.random.Random
 
@@ -96,21 +66,15 @@ fun HomeScreen(
             )
         }
     ) { padding ->
-        if (uiState.isLoading && uiState.notes.isEmpty()) { // Show full screen loader only on initial load
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            HomeContent(
-                modifier = Modifier.padding(padding),
-                query = query,
-                onQuery = { query = it },
-                uiState = uiState,
-                filteredNotes = filteredNotes,
-                onNoteClick = { onNoteClick(it.toString()) },
-                onLoadMore = { homeViewModel.loadMoreNotes() }
-            )
-        }
+        // The content area now only shows the Home content or a loader for background refreshes
+        HomeContent(
+            modifier = Modifier.padding(padding),
+            query = query,
+            onQuery = { query = it },
+            notes = filteredNotes,
+            isLoading = uiState.isLoading,
+            onNoteClick = { onNoteClick(it.toString()) }
+        )
     }
 }
 
@@ -136,7 +100,7 @@ private fun BottomBar(selected: BottomTab, onSelect: (BottomTab) -> Unit) {
         )
         Spacer(Modifier.weight(1f))
         NavigationBarItem(
-            selected = false,
+            selected = false, // Settings tab is never in a "selected" state
             onClick = { onSelect(BottomTab.Settings) },
             icon = { Icon(Icons.Default.Settings, null) },
             label = { Text("Settings") },
@@ -156,23 +120,10 @@ private fun HomeContent(
     modifier: Modifier = Modifier,
     query: String,
     onQuery: (String) -> Unit,
-    uiState: HomeUiState,
-    filteredNotes: List<Note>,
-    onNoteClick: (noteId: Int) -> Unit,
-    onLoadMore: () -> Unit
+    notes: List<NoteEntity>,
+    isLoading: Boolean,
+    onNoteClick: (noteId: Int) -> Unit
 ) {
-    val gridState = rememberLazyGridState()
-
-    LaunchedEffect(gridState, uiState.canPaginate) {
-        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleItemIndex ->
-                val totalItems = filteredNotes.size
-                if (lastVisibleItemIndex != null && lastVisibleItemIndex >= totalItems - 4 && uiState.canPaginate) {
-                    onLoadMore()
-                }
-            }
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -206,7 +157,7 @@ private fun HomeContent(
 
         Spacer(Modifier.height(16.dp))
 
-        if (filteredNotes.isEmpty() && !uiState.isLoading) {
+        if (notes.isEmpty() && !isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -233,28 +184,14 @@ private fun HomeContent(
             }
         } else {
             LazyVerticalGrid(
-                state = gridState, // Attach the grid state
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(filteredNotes, key = { it.id }) { note ->
+                items(notes, key = { it.id }) { note ->
                     NoteCard(note, onClick = { onNoteClick(note.id) })
-                }
-
-                if (uiState.isLoadingMore) {
-                    item(span = { GridItemSpan(2) }) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
                 }
             }
         }
@@ -262,7 +199,7 @@ private fun HomeContent(
 }
 
 @Composable
-private fun NoteCard(note: Note, onClick: () -> Unit) {
+private fun NoteCard(note: NoteEntity, onClick: () -> Unit) {
     val colors = listOf(Color(0xFFFFF3C4), Color(0xFFD4EFFF), Color(0xFFFFD6D6), Color(0xFFE4D4FF))
     val randomColor = remember(note.id) { colors[Random.nextInt(colors.size)] }
 
