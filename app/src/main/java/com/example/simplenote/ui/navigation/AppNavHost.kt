@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.simplenote.ui.onboarding.OnboardingScreen
-import com.example.simplenote.ui.login.LoginScreen
-import com.example.simplenote.ui.register.RegisterScreen
 import com.example.simplenote.ui.home.HomeScreen
+import com.example.simplenote.ui.login.LoginScreen
+import com.example.simplenote.ui.onboarding.OnboardingScreen
+import com.example.simplenote.ui.register.RegisterScreen
 
 private object Routes {
     const val Onboarding = "onboarding"
@@ -24,15 +24,19 @@ fun AppNavHost(navController: NavHostController) {
     ) {
         composable(Routes.Onboarding) {
             OnboardingScreen(
-                onGetStarted = { navController.navigate(Routes.Login) }
+                onGetStarted = {
+                    navController.navigate(Routes.Login) {
+                        popUpTo(Routes.Onboarding) { inclusive = true }
+                    }
+                }
             )
         }
 
         composable(Routes.Login) {
             LoginScreen(
-                onLogin = { email, pass ->
+                onLoginSuccess = {
                     navController.navigate(Routes.Home) {
-                        popUpTo(Routes.Onboarding) { inclusive = true }
+                        popUpTo(Routes.Login) { inclusive = true }
                     }
                 },
                 onRegisterClick = { navController.navigate(Routes.Register) }
@@ -41,10 +45,8 @@ fun AppNavHost(navController: NavHostController) {
 
         composable(Routes.Register) {
             RegisterScreen(
-                onRegister = { first, last, user, email, pass ->
-                    navController.navigate(Routes.Home) {
-                        popUpTo(Routes.Onboarding) { inclusive = true }
-                    }
+                onRegisterSuccess = {
+                    navController.popBackStack()
                 },
                 onBackToLogin = { navController.popBackStack() }
             )
@@ -52,7 +54,7 @@ fun AppNavHost(navController: NavHostController) {
 
         composable(Routes.Home) {
             HomeScreen(
-                onAddNote = { /* TODO: open create note later */ },
+                onAddNote = { /* TODO */ },
                 onOpenSettingsSystem = { /* TODO */ }
             )
         }
