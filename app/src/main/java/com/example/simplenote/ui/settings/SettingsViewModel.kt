@@ -62,6 +62,6 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun logout() {
-        tokenManager.clearToken()
+        tokenManager.clearTokens()
     }
 }

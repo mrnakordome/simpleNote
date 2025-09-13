@@ -17,15 +17,34 @@ class TokenManager(context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    fun saveToken(token: String) {
-        sharedPreferences.edit().putString("access_token", token).apply()
+    companion object {
+        const val KEY_ACCESS_TOKEN = "access_token"
+        const val KEY_REFRESH_TOKEN = "refresh_token"
     }
 
-    fun getToken(): String? {
-        return sharedPreferences.getString("access_token", null)
+    fun saveTokens(accessToken: String, refreshToken: String) {
+        sharedPreferences.edit()
+            .putString(KEY_ACCESS_TOKEN, accessToken)
+            .putString(KEY_REFRESH_TOKEN, refreshToken)
+            .apply()
     }
 
-    fun clearToken() {
-        sharedPreferences.edit().remove("access_token").apply()
+    fun saveAccessToken(accessToken: String) {
+        sharedPreferences.edit().putString(KEY_ACCESS_TOKEN, accessToken).apply()
+    }
+
+    fun getAccessToken(): String? {
+        return sharedPreferences.getString(KEY_ACCESS_TOKEN, null)
+    }
+
+    fun getRefreshToken(): String? {
+        return sharedPreferences.getString(KEY_REFRESH_TOKEN, null)
+    }
+
+    fun clearTokens() {
+        sharedPreferences.edit()
+            .remove(KEY_ACCESS_TOKEN)
+            .remove(KEY_REFRESH_TOKEN)
+            .apply()
     }
 }

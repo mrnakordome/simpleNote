@@ -35,8 +35,8 @@ class LoginViewModel : ViewModel() {
             try {
                 val response = repository.loginUser(LoginRequest(username, pass))
                 if (response.isSuccessful && response.body() != null) {
-                    val token = response.body()!!.accessToken
-                    tokenManager.saveToken(token)
+                    val loginResponse = response.body()!!
+                    tokenManager.saveTokens(loginResponse.accessToken, loginResponse.refreshToken)
                     _uiState.value = LoginUiState(loginSuccess = true)
                 } else {
                     val errorMessage = parseError(response)

@@ -3,27 +3,25 @@ package com.example.simplenote.data.remote
 import com.example.simplenote.data.remote.request.ChangePasswordRequest
 import com.example.simplenote.data.remote.request.LoginRequest
 import com.example.simplenote.data.remote.request.NoteRequest
+import com.example.simplenote.data.remote.request.RefreshTokenRequest
 import com.example.simplenote.data.remote.request.RegisterRequest
-import com.example.simplenote.data.remote.response.LoginResponse
-import com.example.simplenote.data.remote.response.Note
-import com.example.simplenote.data.remote.response.NoteListResponse
-import com.example.simplenote.data.remote.response.RegisterResponse
-import com.example.simplenote.data.remote.response.UserInfoResponse
+import com.example.simplenote.data.remote.response.*
 import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
 
-    // Auth
     @POST("api/auth/token/")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
     @POST("api/auth/register/")
     suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
 
-    // Notes
     @GET("api/notes/")
     suspend fun getNotes(): Response<NoteListResponse>
+
+    @GET
+    suspend fun getNotesByUrl(@Url url: String): Response<NoteListResponse>
 
     @POST("api/notes/")
     suspend fun createNote(@Body noteRequest: NoteRequest): Response<Note>
@@ -42,4 +40,8 @@ interface ApiService {
 
     @POST("api/auth/change-password/")
     suspend fun changePassword(@Body request: ChangePasswordRequest): Response<Unit>
+
+    @POST("api/auth/token/refresh/")
+    suspend fun refreshToken(@Body request: RefreshTokenRequest): Response<RefreshTokenResponse>
+
 }

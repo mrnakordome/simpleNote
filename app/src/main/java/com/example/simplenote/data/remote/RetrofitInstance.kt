@@ -23,15 +23,18 @@ object RetrofitInstance {
 
     private val authInterceptor = Interceptor { chain ->
         val requestBuilder = chain.request().newBuilder()
-        tokenManager.getToken()?.let { token ->
+        tokenManager.getAccessToken()?.let { token ->
             requestBuilder.addHeader("Authorization", "Bearer $token")
         }
         chain.proceed(requestBuilder.build())
     }
 
+    private val tokenAuthenticator = TokenAuthenticator(tokenManager)
+
     private val client = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
         .addInterceptor(authInterceptor)
+        .authenticator(tokenAuthenticator)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
