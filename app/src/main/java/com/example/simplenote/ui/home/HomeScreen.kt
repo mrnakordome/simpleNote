@@ -1,6 +1,7 @@
 package com.example.simplenote.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,12 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.simplenote.ui.theme.AppPurple
 
-// --- مدل خیلی ساده برای نمایش نمونه یادداشت‌ها
 data class NoteUi(
     val id: String,
     val title: String,
@@ -32,31 +33,21 @@ data class NoteUi(
     val tint: Color
 )
 
-// نمونه داده (برای وقتی API نداریم)
 private val sampleNotes = listOf(
-    NoteUi(
-        id = "1",
-        title = "💡 New Product\nIdea Design",
-        body = "Create a mobile app UI Kit that provide a basic notes functionality but with some improvement.",
-        tint = Color(0xFFFFF3C4)
-    ),
-    NoteUi(
-        id = "2",
-        title = "💡 New Product\nIdea Design",
-        body = "There will be a choice to select what kind of notes that user needed...",
-        tint = Color(0xFFFFE7A0)
-    )
+    NoteUi("1", "💡 New Product\nIdea Design", "Create a mobile app UI Kit that provide a basic notes functionality but with some improvement.", Color(0xFFFFF3C4)),
+    NoteUi("2", " Groceries list", "Milk, bread, cheese, eggs, and fruits for the week.", Color(0xFFD4EFFF)),
+    NoteUi("3", " Meeting notes", "Discuss Q3 roadmap with the marketing team. Finalize the budget.", Color(0xFFFFD6D6)),
+    NoteUi("4", " Workout plan", "Monday: Chest, Tuesday: Back, Wednesday: Legs.", Color(0xFFE4D4FF))
 )
 
 @Composable
 fun HomeScreen(
-    // وقتی بعداً API وصل شد این‌ها رو می‌گیریم
-    initialNotes: List<NoteUi> = sampleNotes,
-    onAddNote: () -> Unit = {},
-    onOpenSettingsSystem: () -> Unit = {}
+    onAddNote: () -> Unit,
+    onNoteClick: (noteId: String) -> Unit,
+    onOpenSettingsSystem: () -> Unit = {} // Placeholder for future use
 ) {
     var selectedTab by remember { mutableStateOf(BottomTab.Home) }
-    var notes by remember { mutableStateOf(initialNotes) }
+    var notes by remember { mutableStateOf(sampleNotes) }
     var query by remember { mutableStateOf("") }
 
     val filtered = remember(query, notes) {
@@ -66,18 +57,14 @@ fun HomeScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    // فعلاً فقط placeholder — می‌تونی اینجا به صفحه‌ی “New Note” ببری
-                    onAddNote()
-                    // برای تست Empty/Non-Empty می‌تونی این‌ها را کامنت/آن‌کامنت کنی:
-                    // notes = emptyList()        // حالت خالی
-                    // notes = sampleNotes         // حالت پر
-                },
-                containerColor = AppPurple,
-                contentColor = Color.White,
-                shape = CircleShape
-            ) { Icon(Icons.Default.Add, contentDescription = "Add") }
+            if (selectedTab == BottomTab.Home) {
+                FloatingActionButton(
+                    onClick = onAddNote,
+                    containerColor = AppPurple,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) { Icon(Icons.Default.Add, contentDescription = "Add Note") }
+            }
         },
         bottomBar = {
             BottomBar(
@@ -94,7 +81,8 @@ fun HomeScreen(
                 modifier = Modifier.padding(padding),
                 query = query,
                 onQuery = { query = it },
-                notes = filtered
+                notes = filtered,
+                onNoteClick = onNoteClick
             )
             BottomTab.Settings -> SettingsContent(modifier = Modifier.padding(padding))
         }
@@ -144,24 +132,22 @@ private fun HomeContent(
     modifier: Modifier = Modifier,
     query: String,
     onQuery: (String) -> Unit,
-    notes: List<NoteUi>
+    notes: List<NoteUi>,
+    onNoteClick: (noteId: String) -> Unit
 ) {
     Column(
-        modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp)
             .padding(top = 20.dp)
     ) {
-
-        // Search
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             placeholder = { Text("Search...") },
             singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color(0xFFE7E7EE),
@@ -183,7 +169,6 @@ private fun HomeContent(
         Spacer(Modifier.height(16.dp))
 
         if (notes.isEmpty()) {
-            // Empty state
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -191,7 +176,6 @@ private fun HomeContent(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // فعلاً بدون عکس — هر وقت خواستی painterResource(...) اضافه کن
                     Spacer(Modifier.height(140.dp))
                     Text(
                         "Start Your Journey",
@@ -205,12 +189,11 @@ private fun HomeContent(
                         color = Color(0xFF9A9AA0),
                         lineHeight = 20.sp,
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
                 }
             }
         } else {
-            // Grid of notes (2 ستونه)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 96.dp),
@@ -219,7 +202,7 @@ private fun HomeContent(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(notes, key = { it.id }) { note ->
-                    NoteCard(note)
+                    NoteCard(note, onClick = { onNoteClick(note.id) })
                 }
             }
         }
@@ -227,15 +210,15 @@ private fun HomeContent(
 }
 
 @Composable
-private fun NoteCard(note: NoteUi) {
+private fun NoteCard(note: NoteUi, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp))
             .background(color = Color.White, shape = RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
             .padding(10.dp)
     ) {
-        // رنگ پس‌زمینه‌ی ملایم داخل کارت
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -246,7 +229,9 @@ private fun NoteCard(note: NoteUi) {
                 text = note.title,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E1E1E),
-                lineHeight = 20.sp
+                lineHeight = 20.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(10.dp))
             Text(
